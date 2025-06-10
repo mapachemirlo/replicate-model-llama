@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat AI con Replicate</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .model-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .model-btn:hover, .model-btn.active {
+            background: rgba(255,255,255,0.3);
+            border-color: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-message {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-header {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #e9ecef;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            border-bottom-left-radius: 4px;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #007bff;
+            animation: bounce 1.4s ease-in-out infinite both;
+        }
+
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        .dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { 
+                transform: scale(0);
+            } 40% { 
+                transform: scale(1);
+            }
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-container {
+            display: flex;
+            flex: 1;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-container:focus-within {
+            border-color: #007bff;
+        }
+
+        #messageInput {
+            flex: 1;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            outline: none;
+            resize: none;
+        }
+
+        #sendBtn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #sendBtn:hover:not(:disabled) {
+            background: #0056b3;
+        }
+
+        #sendBtn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .settings {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .setting {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        .setting input {
+            width: 60px;
+            padding: 4px 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-align: center;
+        }
+
+        .setting input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+            }
+            
+            .model-selector {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .settings {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 Chat AI con Replicate</h1>
+            <div class="model-selector">
+                <button class="model-btn active" data-model="llama">🦙 Llama 2 70B</button>
+                <button class="model-btn" data-model="mistral">⚡ Mistral 7B</button>
+            </div>
+            <div class="settings">
+                <div class="setting">
+                    <label>Temp:</label>
+                    <input type="number" id="temperature" min="0.1" max="2" step="0.1" value="0.7" placeholder="0.7">
+                </div>
+                <div class="setting">
+                    <label>Max tokens:</label>
+                    <input type="number" id="maxTokens" min="50" max="2000" step="50" value="512" placeholder="512">
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="ai-message">
+                <div class="message-header">🤖 Asistente AI</div>
+                ¡Hola! Soy tu asistente AI. Puedes elegir entre Llama 2 70B o Mistral 7B para conversar. ¿En qué puedo ayudarte hoy?
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <div class="input-container">
+                <textarea id="messageInput" placeholder="Escribe tu mensaje aquí..." rows="1"></textarea>
+                <button id="sendBtn">📤 Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentModel = 'llama';
+        
+        // Elementos del DOM
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const modelBtns = document.querySelectorAll('.model-btn');
+        const temperatureInput = document.getElementById('temperature');
+        const maxTokensInput = document.getElementById('maxTokens');
+
+        // Selección de modelo
+        modelBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modelBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentModel = btn.dataset.model;
+                
+                addMessage('system', `🔄 Cambiado a ${btn.textContent}`);
+            });
+        });
+
+        // Auto-resize del textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+        // Enviar mensaje con Enter (sin Shift)
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Enviar mensaje con botón
+        sendBtn.addEventListener('click', sendMessage);
+
+        function addMessage(type, content, model = null) {
+            const messageDiv = document.createElement('div');
+            
+            if (type === 'user') {
+                messageDiv.className = 'message user-message';
+                messageDiv.innerHTML = `
+                    <div class="message-header">👤 Tú</div>
+                    ${content}
+                `;
+            } else if (type === 'ai') {
+                messageDiv.className = 'message ai-message';
+                const modelIcon = model === 'Llama 2 70B' ? '🦙' : '⚡';
+                messageDiv.innerHTML = `
+                    <div class="message-header">${modelIcon} ${model}</div>
+                    ${content}
+                `;
+            } else if (type === 'system') {
+                messageDiv.className = 'message ai-message';
+                messageDiv.style.fontStyle = 'italic';
+                messageDiv.style.opacity = '0.8';
+                messageDiv.innerHTML = content;
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showLoading() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.id = 'loadingMessage';
+            loadingDiv.innerHTML = `
+                <span>🤖 Pensando</span>
+                <div class="loading-dots">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideLoading() {
+            const loadingDiv = document.getElementById('loadingMessage');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Deshabilitar entrada
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Agregar mensaje del usuario
+            addMessage('user', message);
+            
+            // Limpiar input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            // Mostrar loading
+            showLoading();
+
+            try {
+                const response = await fetch(`/chat/${currentModel}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        temperature: parseFloat(temperatureInput.value) || 0.7,
+                        max_tokens: parseInt(maxTokensInput.value) || 512
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    hideLoading();
+                    addMessage('ai', data.response, data.model);
+                } else {
+                    hideLoading();
+                    addMessage('system', `❌ Error: ${data.error}`);
+                }
+
+            } catch (error) {
+                hideLoading();
+                addMessage('system', `❌ Error de conexión: ${error.message}`);
+            }
+
+            // Rehabilitar entrada
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+
+        // Verificar estado del servidor al cargar
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                if (!data.replicate_configured) {
+                    addMessage('system', '⚠️ Token de Replicate no configurado. Revisa tu archivo .env');
+                }
+            } catch (error) {
+                addMessage('system', '❌ Error conectando con el servidor');
+            }
+        });
+    </script>
+</body>
+</html>
