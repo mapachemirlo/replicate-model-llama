@@ -1,4 +1,4 @@
-// -- v2
+//-- v1
 const express = require('express');
 const Replicate = require('replicate');
 const path = require('path');
@@ -21,62 +21,14 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Endpoint de salud
-app.get('/health', (req, res) => {
-  res.json({ 
-    success: true,
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    replicate_configured: !!process.env.REPLICATE_API_TOKEN
-  });
-});
-
-// Endpoint para obtener modelos disponibles
-app.get('/models', (req, res) => {
-  try {
-    const models = [
-      {
-        id: 'llama',
-        name: 'Llama 2 70B Chat',
-        description: 'Modelo de Meta, excelente para conversaciones generales'
-      },
-      {
-        id: 'mistral',
-        name: 'Mistral 7B Instruct',
-        description: 'Modelo rápido y eficiente de Mistral AI'
-      }
-    ];
-
-    res.json({ 
-      success: true,
-      models 
-    });
-  } catch (error) {
-    console.error('Error obteniendo modelos:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Error al obtener modelos' 
-    });
-  }
-});
-
+// ---------------------------------------------------- LLAMA ---------------------------------------------------- //
 // Endpoint para chat con Llama
 app.post('/chat/llama', async (req, res) => {
   try {
     const { message, temperature = 0.7, max_tokens = 512 } = req.body;
 
     if (!message) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Mensaje requerido' 
-      });
-    }
-
-    if (!process.env.REPLICATE_API_TOKEN) {
-      return res.status(500).json({
-        success: false,
-        error: 'Token de Replicate no configurado'
-      });
+      return res.status(400).json({ error: 'Mensaje requerido' });
     }
 
     console.log('Enviando mensaje a Llama:', message);
@@ -94,6 +46,7 @@ app.post('/chat/llama', async (req, res) => {
       }
     );
 
+    // Replicate devuelve un array de strings, los unimos
     const response = Array.isArray(output) ? output.join('') : output;
 
     res.json({
@@ -105,30 +58,21 @@ app.post('/chat/llama', async (req, res) => {
   } catch (error) {
     console.error('Error con Llama:', error);
     res.status(500).json({
-      success: false,
-      error: 'Error al procesar la solicitud con Llama',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Error al procesar la solicitud',
+      details: error.message
     });
   }
 });
 
-// Endpoint para chat con Mistral
+
+// ---------------------------------------------------- MISTRAL ---------------------------------------------------- //
+// Endpoint para chat con Mistral (este modelo anda medio pelo)
 app.post('/chat/mistral', async (req, res) => {
   try {
     const { message, temperature = 0.7, max_tokens = 512 } = req.body;
 
     if (!message) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Mensaje requerido' 
-      });
-    }
-
-    if (!process.env.REPLICATE_API_TOKEN) {
-      return res.status(500).json({
-        success: false,
-        error: 'Token de Replicate no configurado'
-      });
+      return res.status(400).json({ error: 'Mensaje requerido' });
     }
 
     console.log('Enviando mensaje a Mistral:', message);
@@ -144,6 +88,16 @@ app.post('/chat/mistral', async (req, res) => {
           top_k: 50
         }
       }
+      // {
+      //   input: {
+      //     prompt: `<s>[INST] ${message} [/INST]`,
+      //     temperature: temperature,
+      //     max_new_tokens: max_tokens,
+      //     top_p: 0.9,
+      //     top_k: 50
+      //   }
+      // }
+      
     );
 
     const response = Array.isArray(output) ? output.join('') : output;
@@ -157,11 +111,42 @@ app.post('/chat/mistral', async (req, res) => {
   } catch (error) {
     console.error('Error con Mistral:', error);
     res.status(500).json({
-      success: false,
-      error: 'Error al procesar la solicitud con Mistral',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Error al procesar la solicitud',
+      details: error.message
     });
   }
+});
+
+// Endpoint para obtener modelos disponibles
+app.get('/models', async (req, res) => {
+  try {
+    const models = [
+      {
+        id: 'llama',
+        name: 'Llama 2 70B Chat',
+        description: 'Modelo de Meta, excelente para conversaciones generales'
+      },
+      {
+        id: 'mistral',
+        name: 'Mistral 7B Instruct',
+        description: 'Modelo rápido y eficiente de Mistral AI'
+      }
+    ];
+
+    res.json({ models });
+  } catch (error) {
+    console.error('Error obteniendo modelos:', error);
+    res.status(500).json({ error: 'Error al obtener modelos' });
+  }
+});
+
+// Endpoint de salud
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    replicate_configured: !!process.env.REPLICATE_API_TOKEN
+  });
 });
 
 app.listen(port, () => {
@@ -173,8 +158,9 @@ app.listen(port, () => {
 module.exports = app;
 
 
-// -- v1
 
+
+// // -- v2 (maneojo de algunos errores)
 // const express = require('express');
 // const Replicate = require('replicate');
 // const path = require('path');
@@ -197,14 +183,62 @@ module.exports = app;
 //   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 // });
 
-// // ---------------------------------------------------- LLAMA ---------------------------------------------------- //
+// // Endpoint de salud
+// app.get('/health', (req, res) => {
+//   res.json({ 
+//     success: true,
+//     status: 'OK', 
+//     timestamp: new Date().toISOString(),
+//     replicate_configured: !!process.env.REPLICATE_API_TOKEN
+//   });
+// });
+
+// // Endpoint para obtener modelos disponibles
+// app.get('/models', (req, res) => {
+//   try {
+//     const models = [
+//       {
+//         id: 'llama',
+//         name: 'Llama 2 70B Chat',
+//         description: 'Modelo de Meta, excelente para conversaciones generales'
+//       },
+//       {
+//         id: 'mistral',
+//         name: 'Mistral 7B Instruct',
+//         description: 'Modelo rápido y eficiente de Mistral AI'
+//       }
+//     ];
+
+//     res.json({ 
+//       success: true,
+//       models 
+//     });
+//   } catch (error) {
+//     console.error('Error obteniendo modelos:', error);
+//     res.status(500).json({ 
+//       success: false,
+//       error: 'Error al obtener modelos' 
+//     });
+//   }
+// });
+
 // // Endpoint para chat con Llama
 // app.post('/chat/llama', async (req, res) => {
 //   try {
 //     const { message, temperature = 0.7, max_tokens = 512 } = req.body;
 
 //     if (!message) {
-//       return res.status(400).json({ error: 'Mensaje requerido' });
+//       return res.status(400).json({ 
+//         success: false,
+//         error: 'Mensaje requerido' 
+//       });
+//     }
+
+//     if (!process.env.REPLICATE_API_TOKEN) {
+//       return res.status(500).json({
+//         success: false,
+//         error: 'Token de Replicate no configurado'
+//       });
 //     }
 
 //     console.log('Enviando mensaje a Llama:', message);
@@ -222,7 +256,6 @@ module.exports = app;
 //       }
 //     );
 
-//     // Replicate devuelve un array de strings, los unimos
 //     const response = Array.isArray(output) ? output.join('') : output;
 
 //     res.json({
@@ -234,21 +267,30 @@ module.exports = app;
 //   } catch (error) {
 //     console.error('Error con Llama:', error);
 //     res.status(500).json({
-//       error: 'Error al procesar la solicitud',
-//       details: error.message
+//       success: false,
+//       error: 'Error al procesar la solicitud con Llama',
+//       details: process.env.NODE_ENV === 'development' ? error.message : undefined
 //     });
 //   }
 // });
 
-
-// // ---------------------------------------------------- MISTRAL ---------------------------------------------------- //
-// // Endpoint para chat con Mistral (este modelo anda medio pelo)
+// // Endpoint para chat con Mistral
 // app.post('/chat/mistral', async (req, res) => {
 //   try {
 //     const { message, temperature = 0.7, max_tokens = 512 } = req.body;
 
 //     if (!message) {
-//       return res.status(400).json({ error: 'Mensaje requerido' });
+//       return res.status(400).json({ 
+//         success: false,
+//         error: 'Mensaje requerido' 
+//       });
+//     }
+
+//     if (!process.env.REPLICATE_API_TOKEN) {
+//       return res.status(500).json({
+//         success: false,
+//         error: 'Token de Replicate no configurado'
+//       });
 //     }
 
 //     console.log('Enviando mensaje a Mistral:', message);
@@ -264,16 +306,6 @@ module.exports = app;
 //           top_k: 50
 //         }
 //       }
-//       // {
-//       //   input: {
-//       //     prompt: `<s>[INST] ${message} [/INST]`,
-//       //     temperature: temperature,
-//       //     max_new_tokens: max_tokens,
-//       //     top_p: 0.9,
-//       //     top_k: 50
-//       //   }
-//       // }
-      
 //     );
 
 //     const response = Array.isArray(output) ? output.join('') : output;
@@ -287,42 +319,11 @@ module.exports = app;
 //   } catch (error) {
 //     console.error('Error con Mistral:', error);
 //     res.status(500).json({
-//       error: 'Error al procesar la solicitud',
-//       details: error.message
+//       success: false,
+//       error: 'Error al procesar la solicitud con Mistral',
+//       details: process.env.NODE_ENV === 'development' ? error.message : undefined
 //     });
 //   }
-// });
-
-// // Endpoint para obtener modelos disponibles
-// app.get('/models', async (req, res) => {
-//   try {
-//     const models = [
-//       {
-//         id: 'llama',
-//         name: 'Llama 2 70B Chat',
-//         description: 'Modelo de Meta, excelente para conversaciones generales'
-//       },
-//       {
-//         id: 'mistral',
-//         name: 'Mistral 7B Instruct',
-//         description: 'Modelo rápido y eficiente de Mistral AI'
-//       }
-//     ];
-
-//     res.json({ models });
-//   } catch (error) {
-//     console.error('Error obteniendo modelos:', error);
-//     res.status(500).json({ error: 'Error al obtener modelos' });
-//   }
-// });
-
-// // Endpoint de salud
-// app.get('/health', (req, res) => {
-//   res.json({ 
-//     status: 'OK', 
-//     timestamp: new Date().toISOString(),
-//     replicate_configured: !!process.env.REPLICATE_API_TOKEN
-//   });
 // });
 
 // app.listen(port, () => {
