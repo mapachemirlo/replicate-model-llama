@@ -8,18 +8,6 @@
   ],
   "routes": [
     {
-      "src": "/chat/(.*)",
-      "dest": "/app.js"
-    },
-    {
-      "src": "/models",
-      "dest": "/app.js"
-    },
-    {
-      "src": "/health",
-      "dest": "/app.js"
-    },
-    {
       "src": "/(.*)",
       "dest": "/app.js"
     }
