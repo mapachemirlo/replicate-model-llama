@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "app.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/chat/(.*)",
+      "dest": "/app.js"
+    },
+    {
+      "src": "/models",
+      "dest": "/app.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/app.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/app.js"
+    }
+  ]
+}
