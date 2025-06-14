@@ -1,4 +1,3 @@
-// app.js
 const express = require('express');
 const Replicate = require('replicate');
 const path = require('path');
@@ -21,6 +20,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ---------------------------------------------------- LLAMA ---------------------------------------------------- //
 // Endpoint para chat con Llama
 app.post('/chat/llama', async (req, res) => {
   try {
@@ -63,7 +63,9 @@ app.post('/chat/llama', async (req, res) => {
   }
 });
 
-// Endpoint para chat con Mistral
+
+// ---------------------------------------------------- MISTRAL ---------------------------------------------------- //
+// Endpoint para chat con Mistral (este modelo anda medio pelo)
 app.post('/chat/mistral', async (req, res) => {
   try {
     const { message, temperature = 0.7, max_tokens = 512 } = req.body;
@@ -75,7 +77,7 @@ app.post('/chat/mistral', async (req, res) => {
     console.log('Enviando mensaje a Mistral:', message);
 
     const output = await replicate.run(
-      "mistralai/mistral-7b-instruct-v0.1:83b6a56e7c828e667f21fd596c338fd4f0039b46bcfa18d973e8e70e455fda70",
+      "mistralai/mistral-7b-v0.1:d938add77615da25dd74c9bcbc5b8ee11c9c3476eb721a6991d32fe5c2ec1968",
       {
         input: {
           prompt: message,
@@ -85,6 +87,16 @@ app.post('/chat/mistral', async (req, res) => {
           top_k: 50
         }
       }
+      // {
+      //   input: {
+      //     prompt: `<s>[INST] ${message} [/INST]`,
+      //     temperature: temperature,
+      //     max_new_tokens: max_tokens,
+      //     top_p: 0.9,
+      //     top_k: 50
+      //   }
+      // }
+      
     );
 
     const response = Array.isArray(output) ? output.join('') : output;
